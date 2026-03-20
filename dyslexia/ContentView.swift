@@ -9,28 +9,41 @@ struct ContentView: View {
     init(viewModel: AppViewModel) {
         self._viewModel = ObservedObject(wrappedValue: viewModel)
     }
+
     @ObservedObject private var viewModel: AppViewModel
-    @State private var letters: [Letter] = []
-    
+    @ObservedObject var navCtrl = MyNavigator()
+
     var body: some View {
-        VStack {
-            Button("New") {
-                viewModel.startNewGame()
-            }.buttonStyle(.borderedProminent)
-            Spacer()
-            LetterGroup(letters: $letters) { arr in
-                let z = arr.prettyPrint()
-                print("Rearrange \(z)")
-                viewModel.rearrange(to: arr)
+        NavigationStack(path: $navCtrl.navPath) {
+            WordScreen(
+                viewModel: viewModel,
+                onOpenHistory: { navCtrl.navigate(to: .History) },
+                onOpenSettings: { navCtrl.navigate(to: .Settings) }
+            )
+            .navigationDestination(for: Route.self) {
+                switch ($0) {
+                case .History:
+                    HistoryScreen(
+                        viewModel: viewModel,
+                        onBack: { navCtrl.navigateBack() },
+                        onOpenDetail: { index in
+                            navCtrl.navigate(to: .HistoryDetail(index))
+                        }
+                    )
+                case .HistoryDetail(let index):
+                    if index >= 0 && index < viewModel.gameHistory.count {
+                        HistoryDetailScreen(
+                            record: viewModel.gameHistory[index],
+                            onBack: { navCtrl.navigateBack() }
+                        )
+                    }
+                case .Settings:
+                    SettingsScreen(
+                        viewModel: viewModel,
+                        onBack: { navCtrl.navigateBack() }
+                    )
+                }
             }
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-        .background(.yellow)
-        .onReceive(viewModel.$letters) { newValue in
-            print("New word in content view")
-            letters = newValue
         }
     }
 }
@@ -42,4 +55,3 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 #endif
-
